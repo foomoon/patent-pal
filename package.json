@@ -1,0 +1,23 @@
+{
+  "name": "patent-pal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"node --env-file-if-exists=.env --watch src/server.js\"",
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@google-cloud/bigquery": "^8.1.1",
+    "@tailwindcss/vite": "^4.1.13",
+    "@vitejs/plugin-react": "^5.0.2",
+    "concurrently": "^9.2.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.13",
+    "vite": "^7.1.3"
+  }
+}

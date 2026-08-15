@@ -1,0 +1,21 @@
+# Dependencies and build output
+node_modules/
+dist/
+
+# Local configuration and credentials
+.env
+.env.local
+.env.*.local
+!.env.example
+*.pem
+*.key
+service-account*.json
+
+# Logs and runtime files
+*.log
+logs/
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+.vscode/
