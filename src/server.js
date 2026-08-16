@@ -1,10 +1,10 @@
 import { createServer } from "node:http";
-import { LMStudioSearchAgent } from "./agents/lm-studio-agent.js";
+import { LocalModelSearchAgent } from "./agents/local-model-agent.js";
 import { PatentSearchHarness } from "./agents/search-harness.js";
 import { createPatentProvider } from "./providers/provider.js";
 
 const provider = createPatentProvider(process.env.PATENT_PROVIDER || "bigquery", { projectId: process.env.GOOGLE_CLOUD_PROJECT, maximumBytesBilled: process.env.PATENT_MAX_BYTES_BILLED, fetchAbstracts: process.env.PATENT_ABSTRACT_ENRICHMENT !== "false" });
-const agent = new LMStudioSearchAgent({ baseUrl: process.env.LM_STUDIO_BASE_URL, model: process.env.LM_STUDIO_MODEL });
+const agent = new LocalModelSearchAgent({ provider: process.env.LOCAL_MODEL_PROVIDER, baseUrl: process.env.LOCAL_MODEL_BASE_URL, model: process.env.LOCAL_MODEL_MODEL });
 const harness = new PatentSearchHarness({ agent, provider, maxIterations: Number(process.env.MAX_SEARCH_ITERATIONS || 3), maxSessionBytesBilled: Number(process.env.MAX_SESSION_BYTES_BILLED || 70_000_000_000) });
 const port = Number(process.env.API_PORT || 3021);
 

@@ -1,7 +1,12 @@
-const defaultBaseUrl = "http://127.0.0.1:1234/v1";
+const defaultOpenAiBaseUrl = "http://127.0.0.1:1234/v1";
+const defaultOllamaBaseUrl = "http://127.0.0.1:11434";
 
-export class LMStudioSearchAgent {
-  constructor({ baseUrl = defaultBaseUrl, model = "openai/gpt-oss-20b" } = {}) {
+export class LocalModelSearchAgent {
+  constructor({ provider = "openai-compatible", baseUrl, model } = {}) {
+    if (!model) model = provider === "ollama" ? "llama3.2" : "openai/gpt-oss-20b";
+    if (!baseUrl) baseUrl = provider === "ollama" ? defaultOllamaBaseUrl : defaultOpenAiBaseUrl;
+    if (!["ollama", "openai-compatible"].includes(provider)) throw new Error(`Unknown local model provider: ${provider}.`);
+    this.provider = provider;
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.model = model;
   }
@@ -21,8 +26,6 @@ export class LMStudioSearchAgent {
       const order = normalizeRanking(parseJson(response).order, results.length);
       return applySourceTextGate(results, order);
     } catch {
-      // Retrieval is already ordered by provider relevance. A local-model
-      // formatting error should not discard an otherwise useful search.
       return applySourceTextGate(results, results.map((_, index) => index));
     }
   }
@@ -33,11 +36,7 @@ export class LMStudioSearchAgent {
     const reflection = parseJson(response);
     if (!["refine", "finish"].includes(reflection.nextAction)) throw new Error("The local model did not return a valid research decision.");
     if (reflection.nextAction === "refine" && (!Array.isArray(reflection.searchTerms) || reflection.searchTerms.length < 1)) throw new Error("The local model requested refinement without usable search terms.");
-    return {
-      nextAction: reflection.nextAction,
-      searchTerms: reflection.nextAction === "refine" ? reflection.searchTerms.slice(0, 6).map(String).filter(Boolean) : [],
-      rationale: String(reflection.rationale || "The current evidence is sufficient.")
-    };
+    return { nextAction: reflection.nextAction, searchTerms: reflection.nextAction === "refine" ? reflection.searchTerms.slice(0, 6).map(String).filter(Boolean) : [], rationale: String(reflection.rationale || "The current evidence is sufficient.") };
   }
 
   async overview({ title, salientTerms, patentText }) {
@@ -48,15 +47,18 @@ export class LMStudioSearchAgent {
   }
 
   async complete(prompt) {
+    const messages = [{ role: "system", content: "Follow the requested JSON schema exactly." }, { role: "user", content: prompt }];
     let response;
     try {
-      response = await fetch(`${this.baseUrl}/chat/completions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: this.model, messages: [{ role: "system", content: "Follow the requested JSON schema exactly." }, { role: "user", content: prompt }], temperature: 0.1, stream: false }) });
+      response = this.provider === "ollama"
+        ? await fetch(`${this.baseUrl}/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: this.model, messages, stream: false, format: "json", options: { temperature: 0.1 } }) })
+        : await fetch(`${this.baseUrl}/chat/completions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: this.model, messages, temperature: 0.1, stream: false }) });
     } catch {
-      throw new Error(`Cannot reach LM Studio at ${this.baseUrl}. Start its local server and verify LM_STUDIO_BASE_URL.`);
+      throw new Error(`Cannot reach ${this.provider === "ollama" ? "Ollama" : "the local OpenAI-compatible model server"} at ${this.baseUrl}. Start it and verify LOCAL_MODEL_BASE_URL.`);
     }
-    if (!response.ok) throw new Error(`LM Studio failed with HTTP ${response.status}. Verify LM_STUDIO_MODEL.`);
+    if (!response.ok) throw new Error(`${this.provider === "ollama" ? "Ollama" : "The local model server"} failed with HTTP ${response.status}. Verify LOCAL_MODEL_MODEL.`);
     const payload = await response.json();
-    return payload.choices?.[0]?.message?.content;
+    return this.provider === "ollama" ? payload.message?.content : payload.choices?.[0]?.message?.content;
   }
 }
 
