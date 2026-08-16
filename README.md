@@ -2,6 +2,8 @@
 
 Patent Pal is a Vite + React prototype for agent-assisted, US-focused patent search. It exposes one local API and keeps each patent source behind a provider adapter.
 
+![Patent Pal interface](./patent-pal-ui-example.png)
+
 ## Run locally
 
 ```sh
