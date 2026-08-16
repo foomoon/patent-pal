@@ -35,6 +35,13 @@ test("harness exposes planning status while an asynchronous search is running", 
   assert.equal(harness.get(started.sessionId).status, "complete");
 });
 
+test("harness records provider enrichment progress during a fresh retrieval", async () => {
+  const agent = { async plan() { return { searchTerms: ["battery cooling"], searchRationale: "Core terms." }; }, async rerank(query, results) { return results; } };
+  const provider = { name: "test-provider", async search(plan, { onProgress }) { onProgress({ stage: "enriching", message: "Loading source details." }); return { results: [] }; } };
+  const response = await new PatentSearchHarness({ agent, provider, cache: memoryCache(), maxIterations: 1 }).run("battery cooling");
+  assert.equal(response.progressHistory.some((progress) => progress.stage === "enriching"), true);
+});
+
 test("harness reuses a repeated query without adding billed usage", async () => {
   let searches = 0;
   const agent = { async plan() { return { searchTerms: ["battery cooling"], searchRationale: "Core terms." }; }, async rerank(query, results) { return results; } };

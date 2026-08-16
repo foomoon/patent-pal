@@ -61,7 +61,7 @@ export class PatentSearchHarness {
         break;
       }
       this.setProgress(session, cached ? { stage: "enriching", message: `Enriching ${cached.value.results.length} cached publications with source details.` } : { stage: "searching", message: `Searching U.S. patent publications (round ${iteration}).` });
-      let retrieval = cached?.value || await this.provider.search(plan);
+      let retrieval = cached?.value || await this.provider.search(plan, { onProgress: (progress) => this.setProgress(session, progress) });
       if (cached && this.provider.hydrateResults) retrieval = { ...retrieval, results: await this.provider.hydrateResults(retrieval.results) };
       if (!cached || retrieval !== cached.value) await this.cache.set(key, retrieval);
       session.results = mergeResults(session.results, retrieval.results);

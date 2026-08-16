@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BigQueryPatentProvider, deriveTerms, extractFallbackSalientTerms, extractPatentAbstract, extractPatentFigures, extractPatentText, patentUrl } from "../src/providers/bigquery-provider.js";
+import { BigQueryPatentProvider, deriveTerms, extractFallbackSalientTerms, extractPatentAbstract, extractPatentFigures, extractPatentPublicationDate, extractPatentText, patentUrl } from "../src/providers/bigquery-provider.js";
 
 test("BigQuery retrieval requires meaningful anchors from the original question", () => {
   const options = new BigQueryPatentProvider().queryOptions({
@@ -21,4 +21,5 @@ test("Google Patents result links and abstract metadata are normalized", () => {
   assert.deepEqual(deriveTerms("A pickup plate supports a pickup beneath strings. The pickup is adjustable."), ["pickup", "plate", "supports", "beneath", "strings", "adjustable"]);
   assert.deepEqual(extractPatentFigures('<img itemprop="thumbnail" src="https://patentimages.storage.googleapis.com/a.png"><img itemprop="thumbnail" src="https://patentimages.storage.googleapis.com/b.png"><img itemprop="thumbnail" src="https://patentimages.storage.googleapis.com/c.png">'), ["https://patentimages.storage.googleapis.com/a.png", "https://patentimages.storage.googleapis.com/b.png"]);
   assert.equal(extractPatentText('<heading>BACKGROUND</heading><div class="description-paragraph">A bridge <b>supports</b> strings.</div>'), "BACKGROUND A bridge supports strings.");
+  assert.equal(extractPatentPublicationDate('<meta name="DC.date" content="2007-11-20" scheme="issue">'), "Nov 20, 2007");
 });

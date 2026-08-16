@@ -9,7 +9,7 @@ export class BigQueryPatentProvider {
     this.fetchAbstracts = fetchAbstracts;
   }
 
-  async search(plan) {
+  async search(plan, { onProgress } = {}) {
     const { BigQuery } = await import("@google-cloud/bigquery");
     const client = new BigQuery({ projectId: this.projectId });
     const [job] = await client.createQueryJob(this.queryOptions(plan));
@@ -17,7 +17,7 @@ export class BigQueryPatentProvider {
     const [metadata] = await job.getMetadata();
     const results = rows.map((row) => ({
       publicationNumber: row.publication_number,
-      publicationDate: "Date unavailable",
+      publicationDate: "",
       assignee: "Google Patents Public Data",
       title: row.title || "Untitled publication",
       abstract: "",
@@ -26,6 +26,7 @@ export class BigQueryPatentProvider {
       matchScore: Number(row.match_score || 0),
       matchEvidence: formatEvidence(row)
     }));
+    onProgress?.({ stage: "enriching", message: `Loading source details for ${results.length} patent publications.` });
     return {
       provider: this.name,
       query: plan.query,
@@ -36,7 +37,7 @@ export class BigQueryPatentProvider {
   }
 
   async hydrateResults(results) {
-    const normalized = results.map((result) => ({ ...result, abstract: removeSalientTermPreamble(result.abstract), salientTerms: result.salientTerms?.length ? result.salientTerms : extractFallbackSalientTerms(result.abstract), patentUrl: result.patentUrl || patentUrl(result.publicationNumber) }));
+    const normalized = results.map((result) => ({ ...result, publicationDate: result.publicationDate === "Date unavailable" ? "" : result.publicationDate, abstract: removeSalientTermPreamble(result.abstract), salientTerms: result.salientTerms?.length ? result.salientTerms : extractFallbackSalientTerms(result.abstract), patentUrl: result.patentUrl || patentUrl(result.publicationNumber) }));
     const hydrated = this.fetchAbstracts ? await enrichPatentDetails(normalized) : normalized;
     return hydrated.map(withDerivedSalientTerms);
   }
@@ -91,7 +92,7 @@ async function enrichPatentDetails(results) {
       const html = await response.text();
       const abstract = extractPatentAbstract(html);
       const patentText = extractPatentText(html);
-      return { ...result, abstract: abstract || result.abstract, figures: extractPatentFigures(html), sourceTextAvailable: Boolean(abstract || patentText) };
+      return { ...result, publicationDate: extractPatentPublicationDate(html) || result.publicationDate, abstract: abstract || result.abstract, figures: extractPatentFigures(html), sourceTextAvailable: Boolean(abstract || patentText) };
     } catch {
       return { ...result, sourceTextAvailable: false };
     }
@@ -122,6 +123,13 @@ export function extractPatentAbstract(html) {
   const match = html.match(/<meta\s+name=["']DC\.description["']\s+content=["']([\s\S]*?)["']/i) || html.match(/<meta\s+name=["']description["']\s+content=["']([\s\S]*?)["']/i);
   if (!match) return "";
   return decodeHtml(match[1]).replace(/\s+/g, " ").trim().slice(0, 700);
+}
+
+export function extractPatentPublicationDate(html) {
+  const match = html.match(/<meta\s+name=["']DC\.date["']\s+content=["']([^"']+)["']\s+scheme=["']issue["']/i);
+  if (!match) return "";
+  const date = new Date(`${match[1]}T00:00:00Z`);
+  return Number.isNaN(date.valueOf()) ? "" : new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }).format(date);
 }
 
 export function extractFallbackSalientTerms(value) {
