@@ -17,7 +17,7 @@ Do not add a toolchain without documenting its version and setup steps.
 
 ## Coding Style & Naming Conventions
 
-Use 2 spaces for JSON and JavaScript. Use `camelCase` for variables/functions, `PascalCase` for React components and classes, and lowercase kebab-case filenames such as `bigquery-provider.js`. Provider adapters must return the same normalized response shape, regardless of source.
+Use 2 spaces for JSON and JavaScript. Use `camelCase` for variables/functions, `PascalCase` for React components and classes, and lowercase kebab-case filenames such as `bigquery-provider.js`. Provider adapters must return the same normalized response shape, regardless of source. Keep LM Studio planning and reranking in `src/agents/`.
 
 ## Testing Guidelines
 
